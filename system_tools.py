@@ -1,0 +1,155 @@
+import subprocess
+import os
+import time
+from typing import Optional, List
+try:
+    from docx import Document
+except ImportError:
+    Document = None
+
+class ClipboardManager:
+    """
+    Manages system clipboard operations using native macOS commands.
+    """
+    
+    @staticmethod
+    def copy_text(text: str) -> bool:
+        """Copy text to clipboard using pbcopy."""
+        try:
+            process = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE)
+            process.communicate(text.encode('utf-8'))
+            return True
+        except Exception as e:
+            print(f"❌ Failed to copy text: {e}")
+            return False
+
+    @staticmethod
+    def get_text() -> str:
+        """Get text from clipboard using pbpaste."""
+        try:
+            return subprocess.check_output(['pbpaste'], encoding='utf-8')
+        except Exception as e:
+            print(f"❌ Failed to paste text: {e}")
+            return ""
+
+    @staticmethod
+    def copy_file(file_path: str) -> bool:
+        """
+        Copy a file to clipboard using AppleScript.
+        This allows 'Cmd+V' in apps like Feishu/Finder to paste the actual file.
+        """
+        abs_path = os.path.abspath(file_path)
+        if not os.path.exists(abs_path):
+            print(f"❌ File not found: {abs_path}")
+            return False
+            
+        # AppleScript to set clipboard to a file object
+        script = f'''
+        set the clipboard to POSIX file "{abs_path}"
+        '''
+        try:
+            subprocess.run(['osascript', '-e', script], check=True)
+            print(f"📋 File copied to clipboard: {abs_path}")
+            return True
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Failed to copy file to clipboard: {e}")
+            return False
+
+class FileManager:
+    """
+    Fast file operations using macOS Spotlight (mdfind) and Unix tools.
+    """
+    
+    @staticmethod
+    def find_file(name_query: str, search_dir: str = "~", limit: int = 1) -> Optional[str]:
+        """
+        Use mdfind (Spotlight) to instantly find files. 
+        Fallback to 'find' command if mdfind returns nothing or is disabled.
+        """
+        expanded_dir = os.path.expanduser(search_dir)
+        print(f"🔍 Searching for '{name_query}' in {expanded_dir}...")
+        
+        # 1. Try mdfind (fastest)
+        try:
+            # kMDItemFSName is the filename, -onlyin limits scope
+            cmd = ['mdfind', '-name', name_query, '-onlyin', expanded_dir]
+            output = subprocess.check_output(cmd, encoding='utf-8').strip()
+            if output:
+                files = output.split('\n')
+                # Return the most recent or best match (first one usually)
+                best_match = files[0]
+                print(f"   ✅ Found via Spotlight: {best_match}")
+                return best_match
+        except Exception:
+            pass
+            
+        # 2. Fallback to Unix find (slower but reliable)
+        try:
+            # find ~ -name "*query*" -print -quit
+            cmd = ['find', expanded_dir, '-name', f'*{name_query}*', '-print', '-quit']
+            # Timeout after 3 seconds to prevent hanging on huge dirs
+            output = subprocess.check_output(cmd, encoding='utf-8', timeout=3).strip()
+            if output:
+                print(f"   ✅ Found via Find: {output}")
+                return output
+        except Exception as e:
+            print(f"   ⚠️ Search failed: {e}")
+            
+        print("   ❌ File not found.")
+        return None
+
+class DocumentGenerator:
+    """
+    Generates Office documents programmatically using python-docx.
+    """
+    
+    @staticmethod
+    def create_docx(content: str, file_name: str = "generated_doc.docx", output_dir: str = "~/Downloads") -> Optional[str]:
+        """
+        Create a Word document with the given content.
+        """
+        if not Document:
+            print("❌ python-docx library is not installed.")
+            return None
+            
+        try:
+            doc = Document()
+            doc.add_heading('Auto-Generated Report', 0)
+            
+            # Simple parsing: split by newlines for paragraphs
+            for line in content.split('\n'):
+                if line.strip():
+                    doc.add_paragraph(line)
+            
+            save_path = os.path.join(os.path.expanduser(output_dir), file_name)
+            doc.save(save_path)
+            
+            print(f"📄 Document created: {save_path}")
+            return save_path
+        except Exception as e:
+            print(f"❌ Failed to create document: {e}")
+            return None
+
+if __name__ == "__main__":
+    # Test Suite
+    print("--- Testing System Tools ---")
+    
+    # 1. Test Clipboard Text
+    ClipboardManager.copy_text("Hello Vision Agent 3.0")
+    assert "Hello Vision Agent 3.0" == ClipboardManager.get_text()
+    print("✅ Clipboard Text: OK")
+    
+    # 2. Test Doc Gen
+    doc_path = DocumentGenerator.create_docx("This is a test.\nGenerated by System 3.0.", "test_v3.docx")
+    
+    # 3. Test File Search
+    if doc_path:
+        found_path = FileManager.find_file("test_v3.docx", "~/Downloads")
+        assert found_path == doc_path
+        print("✅ File Search: OK")
+        
+        # 4. Test Clipboard File
+        res = ClipboardManager.copy_file(found_path)
+        print(f"✅ Clipboard File: {'OK' if res else 'Fail'}")
+        
+    print("--- Test Complete ---")

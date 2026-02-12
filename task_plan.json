@@ -1,0 +1,290 @@
+[
+  {
+    "step_number": 1,
+    "action": "open_app",
+    "target": "WPS Office",
+    "content": null,
+    "expected_result": "WPS Office 应用已打开，显示主界面",
+    "verification": "检查屏幕是否显示 WPS Office 主窗口，包含左侧导航栏和中间文件列表区域"
+  },
+  {
+    "step_number": 2,
+    "action": "click",
+    "target": "主界面左上角的蓝色'新建'按钮，带有加号图标",
+    "content": null,
+    "expected_result": "弹出新建文件类型选择菜单",
+    "verification": "检查是否出现包含'文档'、'表格'、'演示'等选项的下拉菜单"
+  },
+  {
+    "step_number": 3,
+    "action": "click",
+    "target": "新建下拉菜单中的'表格'选项，图标为绿色表格样式",
+    "content": null,
+    "expected_result": "创建新的空白 Excel 表格",
+    "verification": "检查是否出现空白的 Excel 工作表界面，包含列标A、B、C和行号1、2、3"
+  },
+  {
+    "step_number": 4,
+    "action": "click",
+    "target": "表格左上角的单元格A1，位于列标A和行号1的交叉处",
+    "content": null,
+    "expected_result": "单元格A1被选中，显示蓝色边框",
+    "verification": "检查A1单元格是否有蓝色选中边框，左上角名称框显示'A1'"
+  },
+  {
+    "step_number": 5,
+    "action": "type",
+    "target": "当前选中的A1单元格",
+    "content": "5000美元/盎司黄金换算",
+    "expected_result": "A1单元格显示输入的标题文字",
+    "verification": "检查A1单元格是否显示'5000美元/盎司黄金换算'"
+  },
+  {
+    "step_number": 6,
+    "action": "click",
+    "target": "单元格A2，位于A1正下方",
+    "content": null,
+    "expected_result": "单元格A2被选中",
+    "verification": "检查A2单元格是否有蓝色选中边框"
+  },
+  {
+    "step_number": 7,
+    "action": "type",
+    "target": "当前选中的A2单元格",
+    "content": "美元/盎司价格",
+    "expected_result": "A2单元格显示输入的文字",
+    "verification": "检查A2单元格是否显示'美元/盎司价格'"
+  },
+  {
+    "step_number": 8,
+    "action": "click",
+    "target": "单元格B2，位于A2右侧",
+    "content": null,
+    "expected_result": "单元格B2被选中",
+    "verification": "检查B2单元格是否有蓝色选中边框"
+  },
+  {
+    "step_number": 9,
+    "action": "type",
+    "target": "当前选中的B2单元格",
+    "content": "5000",
+    "expected_result": "B2单元格显示数值5000",
+    "verification": "检查B2单元格是否显示'5000'"
+  },
+  {
+    "step_number": 10,
+    "action": "click",
+    "target": "单元格A3，位于A2正下方",
+    "content": null,
+    "expected_result": "单元格A3被选中",
+    "verification": "检查A3单元格是否有蓝色选中边框"
+  },
+  {
+    "step_number": 11,
+    "action": "type",
+    "target": "当前选中的A3单元格",
+    "content": "汇率(美元兑人民币)",
+    "expected_result": "A3单元格显示输入的文字",
+    "verification": "检查A3单元格是否显示'汇率(美元兑人民币)'"
+  },
+  {
+    "step_number": 12,
+    "action": "click",
+    "target": "单元格B3，位于A3右侧",
+    "content": null,
+    "expected_result": "单元格B3被选中",
+    "verification": "检查B3单元格是否有蓝色选中边框"
+  },
+  {
+    "step_number": 13,
+    "action": "type",
+    "target": "当前选中的B3单元格",
+    "content": "7.25",
+    "expected_result": "B3单元格显示数值7.25",
+    "verification": "检查B3单元格是否显示'7.25'"
+  },
+  {
+    "step_number": 14,
+    "action": "click",
+    "target": "单元格A4，位于A3正下方",
+    "content": null,
+    "expected_result": "单元格A4被选中",
+    "verification": "检查A4单元格是否有蓝色选中边框"
+  },
+  {
+    "step_number": 15,
+    "action": "type",
+    "target": "当前选中的A4单元格",
+    "content": "盎司转克系数",
+    "expected_result": "A4单元格显示输入的文字",
+    "verification": "检查A4单元格是否显示'盎司转克系数'"
+  },
+  {
+    "step_number": 16,
+    "action": "click",
+    "target": "单元格B4，位于A4右侧",
+    "content": null,
+    "expected_result": "单元格B4被选中",
+    "verification": "检查B4单元格是否有蓝色选中边框"
+  },
+  {
+    "step_number": 17,
+    "action": "type",
+    "target": "当前选中的B4单元格",
+    "content": "31.1035",
+    "expected_result": "B4单元格显示数值31.1035",
+    "verification": "检查B4单元格是否显示'31.1035'"
+  },
+  {
+    "step_number": 18,
+    "action": "click",
+    "target": "单元格A5，位于A4正下方",
+    "content": null,
+    "expected_result": "单元格A5被选中",
+    "verification": "检查A5单元格是否有蓝色选中边框"
+  },
+  {
+    "step_number": 19,
+    "action": "type",
+    "target": "当前选中的A5单元格",
+    "content": "人民币/克价格",
+    "expected_result": "A5单元格显示输入的文字",
+    "verification": "检查A5单元格是否显示'人民币/克价格'"
+  },
+  {
+    "step_number": 20,
+    "action": "click",
+    "target": "单元格B5，位于A5右侧",
+    "content": null,
+    "expected_result": "单元格B5被选中",
+    "verification": "检查B5单元格是否有蓝色选中边框"
+  },
+  {
+    "step_number": 21,
+    "action": "type",
+    "target": "当前选中的B5单元格",
+    "content": "=B2*B3/B4",
+    "expected_result": "B5单元格显示计算公式",
+    "verification": "检查编辑栏是否显示公式'=B2*B3/B4'"
+  },
+  {
+    "step_number": 22,
+    "action": "keyboard_shortcut",
+    "target": "当前活动的WPS表格窗口",
+    "content": "Enter",
+    "expected_result": "公式计算完成，显示结果约1165.32",
+    "verification": "检查B5单元格是否显示计算结果，约为1165.32人民币/克"
+  },
+  {
+    "step_number": 23,
+    "action": "keyboard_shortcut",
+    "target": "当前活动的WPS表格窗口",
+    "content": "Command+S",
+    "expected_result": "弹出另存为对话框",
+    "verification": "检查是否出现保存文件对话框，包含文件名输入框和保存位置选择"
+  },
+  {
+    "step_number": 24,
+    "action": "type",
+    "target": "另存为对话框中央的文件名输入框",
+    "content": "黄金价格换算",
+    "expected_result": "文件名输入框显示'黄金价格换算'",
+    "verification": "检查文件名输入框是否显示'黄金价格换算'"
+  },
+  {
+    "step_number": 25,
+    "action": "click",
+    "target": "另存为对话框右下角的蓝色'保存'按钮",
+    "content": null,
+    "expected_result": "文件保存成功，对话框关闭",
+    "verification": "检查对话框是否关闭，窗口标题栏显示文件名'黄金价格换算'"
+  },
+  {
+    "step_number": 26,
+    "action": "open_app",
+    "target": "飞书",
+    "content": null,
+    "expected_result": "飞书应用已打开，显示主界面",
+    "verification": "检查屏幕是否显示飞书主窗口，包含左侧导航栏（消息、日历、云文档等）"
+  },
+  {
+    "step_number": 27,
+    "action": "click",
+    "target": "飞书左侧导航栏顶部的'消息'图标，图标为对话气泡样式",
+    "content": null,
+    "expected_result": "进入消息列表界面",
+    "verification": "检查中间区域是否显示消息会话列表"
+  },
+  {
+    "step_number": 28,
+    "action": "click",
+    "target": "消息列表顶部的搜索框，带有放大镜图标和'搜索'占位文字",
+    "content": null,
+    "expected_result": "搜索框获得焦点，可以输入文字",
+    "verification": "检查搜索框是否处于激活状态，光标闪烁"
+  },
+  {
+    "step_number": 29,
+    "action": "type",
+    "target": "飞书消息界面顶部的搜索输入框",
+    "content": "文件助手",
+    "expected_result": "搜索结果显示'文件助手'选项",
+    "verification": "检查搜索下拉结果中是否出现'文件助手'选项"
+  },
+  {
+    "step_number": 30,
+    "action": "click",
+    "target": "搜索结果下拉列表中的'文件助手'选项，带有文件夹图标",
+    "content": null,
+    "expected_result": "打开与文件助手的对话窗口",
+    "verification": "检查右侧是否显示文件助手的聊天界面，顶部标题显示'文件助手'"
+  },
+  {
+    "step_number": 31,
+    "action": "click",
+    "target": "聊天窗口底部输入框左侧的文件/附件图标，通常是回形针或文件夹样式的图标",
+    "content": null,
+    "expected_result": "弹出文件选择菜单或打开文件选择器",
+    "verification": "检查是否出现文件选择对话框或上传选项菜单"
+  },
+  {
+    "step_number": 32,
+    "action": "click",
+    "target": "文件选择菜单中的'本地文件'或'上传文件'选项",
+    "content": null,
+    "expected_result": "打开系统文件选择对话框",
+    "verification": "检查是否出现macOS的Finder文件选择窗口"
+  },
+  {
+    "step_number": 33,
+    "action": "click",
+    "target": "文件选择对话框左侧边栏中的'最近使用'或'文稿'文件夹",
+    "content": null,
+    "expected_result": "显示最近文件或文稿目录内容",
+    "verification": "检查文件列表区域是否显示相关文件"
+  },
+  {
+    "step_number": 34,
+    "action": "click",
+    "target": "文件列表中名为'黄金价格换算.xlsx'或'黄金价格换算.et'的文件",
+    "content": null,
+    "expected_result": "文件被选中，显示高亮状态",
+    "verification": "检查文件是否被选中高亮，底部文件名框显示所选文件名"
+  },
+  {
+    "step_number": 35,
+    "action": "click",
+    "target": "文件选择对话框右下角的蓝色'打开'或'选择'按钮",
+    "content": null,
+    "expected_result": "文件被添加到聊天输入框，准备发送",
+    "verification": "检查聊天输入框区域是否显示已添加的文件图标和文件名"
+  },
+  {
+    "step_number": 36,
+    "action": "click",
+    "target": "聊天窗口底部输入框右侧的蓝色发送按钮，通常是纸飞机图标或箭头样式",
+    "content": null,
+    "expected_result": "文件成功发送到文件助手",
+    "verification": "检查聊天记录中是否出现已发送的文件消息，显示文件名和发送成功状态"
+  }
+]
