@@ -454,12 +454,13 @@ class VisionAgent:
                     time.sleep(0.5) # 等待点击生效
                     return True
                 except FileNotFoundError:
-                    # 如果没有 cliclick，回退到 peekaboo
+                    # 如果没有 cliclick，回退到 peekaboo（指定 --app 确保点击在目标应用）
                     print("   ⚠️  未安装 cliclick，回退到 peekaboo")
-                    result = subprocess.run([
-                        'peekaboo', 'click',
-                        '--coords', f'{int(x)},{int(y)}'
-                    ], capture_output=True)
+                    app = target.get("_click_app")  # 调用方传入
+                    cmd = ['peekaboo', 'click', '--coords', f'{int(x)},{int(y)}']
+                    if app:
+                        cmd.extend(['--app', app])
+                    result = subprocess.run(cmd, capture_output=True)
                     time.sleep(0.5)
                     return result.returncode == 0
                 except Exception as e:
