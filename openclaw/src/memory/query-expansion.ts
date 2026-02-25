@@ -459,7 +459,7 @@ const KO_TRAILING_PARTICLES = [
   "과",
   "도",
   "만",
-].toSorted((a, b) => b.length - a.length);
+].slice().sort((a: string, b: string) => b.length - a.length);
 
 function stripKoreanTrailingParticle(token: string): string | null {
   for (const particle of KO_TRAILING_PARTICLES) {

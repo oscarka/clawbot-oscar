@@ -2,7 +2,11 @@ import { createHash } from "node:crypto";
 import type { ToolLoopDetectionConfig } from "../config/types.tools.js";
 import type { SessionState } from "../logging/diagnostic-session-state.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
-import { isPlainObject } from "../utils.js";
+
+// Inline isPlainObject to avoid import issues with local utils
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 const log = createSubsystemLogger("agents/loop-detection");
 
@@ -15,14 +19,14 @@ export type LoopDetectorKind =
 export type LoopDetectionResult =
   | { stuck: false }
   | {
-      stuck: true;
-      level: "warning" | "critical";
-      detector: LoopDetectorKind;
-      count: number;
-      message: string;
-      pairedToolName?: string;
-      warningKey?: string;
-    };
+    stuck: true;
+    level: "warning" | "critical";
+    detector: LoopDetectorKind;
+    count: number;
+    message: string;
+    pairedToolName?: string;
+    warningKey?: string;
+  };
 
 export const TOOL_CALL_HISTORY_SIZE = 30;
 export const WARNING_THRESHOLD = 10;
@@ -115,8 +119,8 @@ function stableStringify(value: unknown): string {
     return `[${value.map(stableStringify).join(",")}]`;
   }
   const obj = value as Record<string, unknown>;
-  const keys = Object.keys(obj).toSorted();
-  return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(",")}}`;
+  const keys = Object.keys(obj).slice().sort();
+  return `{${keys.map((k: string) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(",")}}`;
 }
 
 function digestStable(value: unknown): string {
@@ -151,20 +155,20 @@ function isKnownPollToolCall(toolName: string, params: unknown): boolean {
   if (toolName !== "process" || !isPlainObject(params)) {
     return false;
   }
-  const action = params.action;
+  const action = (params as Record<string, unknown>).action;
   return action === "poll" || action === "log";
 }
 
 function extractTextContent(result: unknown): string {
-  if (!isPlainObject(result) || !Array.isArray(result.content)) {
+  if (!isPlainObject(result) || !Array.isArray((result as Record<string, unknown>).content)) {
     return "";
   }
-  return result.content
+  return ((result as Record<string, unknown>).content as unknown[])
     .filter(
-      (entry): entry is { type: string; text: string } =>
-        isPlainObject(entry) && typeof entry.type === "string" && typeof entry.text === "string",
+      (entry: unknown): entry is { type: string; text: string } =>
+        isPlainObject(entry) && typeof (entry as Record<string, unknown>).type === "string" && typeof (entry as Record<string, unknown>).text === "string",
     )
-    .map((entry) => entry.text)
+    .map((entry: { type: string; text: string }) => entry.text)
     .join("\n")
     .trim();
 }
@@ -195,10 +199,11 @@ function hashToolOutcome(
     return result === undefined ? undefined : digestStable(result);
   }
 
-  const details = isPlainObject(result.details) ? result.details : {};
+  const r = result as Record<string, unknown>;
+  const details = isPlainObject(r.details) ? (r.details as Record<string, unknown>) : {} as Record<string, unknown>;
   const text = extractTextContent(result);
   if (isKnownPollToolCall(toolName, params) && toolName === "process" && isPlainObject(params)) {
-    const action = params.action;
+    const action = (params as Record<string, unknown>).action;
     if (action === "poll") {
       return digestStable({
         action,
@@ -362,7 +367,7 @@ function getPingPongStreak(
 }
 
 function canonicalPairKey(signatureA: string, signatureB: string): string {
-  return [signatureA, signatureB].toSorted().join("|");
+  return [signatureA, signatureB].slice().sort().join("|");
 }
 
 /**

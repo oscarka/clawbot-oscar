@@ -51,8 +51,8 @@ export function pruneDiagnosticSessionStates(now = Date.now(), force = false): v
     return;
   }
   const excess = diagnosticSessionStates.size - SESSION_STATE_MAX_ENTRIES;
-  const ordered = Array.from(diagnosticSessionStates.entries()).toSorted(
-    (a, b) => a[1].lastActivity - b[1].lastActivity,
+  const ordered = Array.from(diagnosticSessionStates.entries()).slice().sort(
+    (a: [string, SessionState], b: [string, SessionState]) => a[1].lastActivity - b[1].lastActivity,
   );
   for (let i = 0; i < excess; i += 1) {
     const key = ordered[i]?.[0];
