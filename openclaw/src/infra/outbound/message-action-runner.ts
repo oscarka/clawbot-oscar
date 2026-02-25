@@ -69,52 +69,52 @@ export type RunMessageActionParams = {
 
 export type MessageActionRunResult =
   | {
-      kind: "send";
-      channel: ChannelId;
-      action: "send";
-      to: string;
-      handledBy: "plugin" | "core";
-      payload: unknown;
-      toolResult?: AgentToolResult<unknown>;
-      sendResult?: MessageSendResult;
-      dryRun: boolean;
-    }
+    kind: "send";
+    channel: ChannelId;
+    action: "send";
+    to: string;
+    handledBy: "plugin" | "core";
+    payload: unknown;
+    toolResult?: AgentToolResult<unknown>;
+    sendResult?: MessageSendResult;
+    dryRun: boolean;
+  }
   | {
-      kind: "broadcast";
-      channel: ChannelId;
-      action: "broadcast";
-      handledBy: "core" | "dry-run";
-      payload: {
-        results: Array<{
-          channel: ChannelId;
-          to: string;
-          ok: boolean;
-          error?: string;
-          result?: MessageSendResult;
-        }>;
-      };
-      dryRun: boolean;
-    }
-  | {
-      kind: "poll";
-      channel: ChannelId;
-      action: "poll";
-      to: string;
-      handledBy: "plugin" | "core";
-      payload: unknown;
-      toolResult?: AgentToolResult<unknown>;
-      pollResult?: MessagePollResult;
-      dryRun: boolean;
-    }
-  | {
-      kind: "action";
-      channel: ChannelId;
-      action: Exclude<ChannelMessageActionName, "send" | "poll">;
-      handledBy: "plugin" | "dry-run";
-      payload: unknown;
-      toolResult?: AgentToolResult<unknown>;
-      dryRun: boolean;
+    kind: "broadcast";
+    channel: ChannelId;
+    action: "broadcast";
+    handledBy: "core" | "dry-run";
+    payload: {
+      results: Array<{
+        channel: ChannelId;
+        to: string;
+        ok: boolean;
+        error?: string;
+        result?: MessageSendResult;
+      }>;
     };
+    dryRun: boolean;
+  }
+  | {
+    kind: "poll";
+    channel: ChannelId;
+    action: "poll";
+    to: string;
+    handledBy: "plugin" | "core";
+    payload: unknown;
+    toolResult?: AgentToolResult<unknown>;
+    pollResult?: MessagePollResult;
+    dryRun: boolean;
+  }
+  | {
+    kind: "action";
+    channel: ChannelId;
+    action: Exclude<ChannelMessageActionName, "send" | "poll">;
+    handledBy: "plugin" | "dry-run";
+    payload: unknown;
+    toolResult?: AgentToolResult<unknown>;
+    dryRun: boolean;
+  };
 
 export function getToolResult(
   result: MessageActionRunResult,
@@ -126,12 +126,12 @@ function extractToolPayload(result: AgentToolResult<unknown>): unknown {
   if (result.details !== undefined) return result.details;
   const textBlock = Array.isArray(result.content)
     ? result.content.find(
-        (block) =>
-          block &&
-          typeof block === "object" &&
-          (block as { type?: unknown }).type === "text" &&
-          typeof (block as { text?: unknown }).text === "string",
-      )
+      (block) =>
+        block &&
+        typeof block === "object" &&
+        (block as { type?: unknown }).type === "text" &&
+        typeof (block as { text?: unknown }).text === "string",
+    )
     : undefined;
   const text = (textBlock as { text?: string } | undefined)?.text;
   if (text) {
@@ -682,15 +682,15 @@ async function handleSendAction(ctx: ResolvedActionContext): Promise<MessageActi
   const outboundRoute =
     agentId && !dryRun
       ? await resolveOutboundSessionRoute({
-          cfg,
-          channel,
-          agentId,
-          accountId,
-          target: to,
-          resolvedTarget,
-          replyToId,
-          threadId: threadId ?? slackAutoThreadId,
-        })
+        cfg,
+        channel,
+        agentId,
+        accountId,
+        target: to,
+        resolvedTarget,
+        replyToId,
+        threadId: threadId ?? slackAutoThreadId,
+      })
       : null;
   if (outboundRoute && agentId && !dryRun) {
     await ensureOutboundSessionEntry({
@@ -717,11 +717,11 @@ async function handleSendAction(ctx: ResolvedActionContext): Promise<MessageActi
       mirror:
         outboundRoute && !dryRun
           ? {
-              sessionKey: outboundRoute.sessionKey,
-              agentId,
-              text: message,
-              mediaUrls: mirrorMediaUrls,
-            }
+            sessionKey: outboundRoute.sessionKey,
+            agentId,
+            text: message,
+            mediaUrls: mirrorMediaUrls,
+          }
           : undefined,
       abortSignal,
     },
@@ -892,6 +892,7 @@ export async function runMessageAction(
     const currentId = input.toolContext?.currentChannelId?.trim();
     const targetRaw = (params.target ?? params.to ?? "") as string;
     const targetTrimmed = typeof targetRaw === "string" ? targetRaw.trim() : "";
+    // Case 1: Context is group chat (oc_), but AI targets a user (ou_) → redirect to group
     if (
       currentId &&
       /^oc_/i.test(currentId) &&
@@ -900,6 +901,11 @@ export async function runMessageAction(
     ) {
       params.target = currentId;
       if (typeof params.to === "string") params.to = currentId;
+    }
+    // Case 2: No target set but we have a valid currentChannelId → use it as fallback
+    if (!targetTrimmed && currentId) {
+      params.target = currentId;
+      if (typeof params.to === "string" || !params.to) params.to = currentId;
     }
   }
   if (!explicitTarget && actionRequiresTarget(action) && hasLegacyTarget) {

@@ -32,6 +32,28 @@ const SEARCH_CACHE = new Map<string, CacheEntry<Record<string, unknown>>>();
 const BRAVE_FRESHNESS_SHORTCUTS = new Set(["pd", "pw", "pm", "py"]);
 const BRAVE_FRESHNESS_RANGE = /^(\d{4}-\d{2}-\d{2})to(\d{4}-\d{2}-\d{2})$/;
 
+/**
+ * Normalize language codes for Brave Search API.
+ * Brave requires specific codes (e.g., 'zh-hans' not 'zh', 'pt-br' not 'pt').
+ * The AI often passes short ISO codes that Brave rejects with 422.
+ */
+const BRAVE_SEARCH_LANG_MAP: Record<string, string> = {
+  zh: "zh-hans",
+  "zh-cn": "zh-hans",
+  "zh-sg": "zh-hans",
+  "zh-tw": "zh-hant",
+  "zh-hk": "zh-hant",
+  pt: "pt-pt",
+  "en-us": "en",
+};
+
+function normalizeSearchLang(lang: string | undefined): string | undefined {
+  if (!lang) return undefined;
+  const lower = lang.trim().toLowerCase();
+  if (!lower) return undefined;
+  return BRAVE_SEARCH_LANG_MAP[lower] ?? lower;
+}
+
 const WebSearchSchema = Type.Object({
   query: Type.String({ description: "Search query string." }),
   count: Type.Optional(
@@ -67,8 +89,8 @@ const WebSearchSchema = Type.Object({
 
 type WebSearchConfig = NonNullable<OpenClawConfig["tools"]>["web"] extends infer Web
   ? Web extends { search?: infer Search }
-    ? Search
-    : undefined
+  ? Search
+  : undefined
   : undefined;
 
 type BraveSearchResult = {
@@ -362,7 +384,7 @@ async function runWebSearch(params: {
     url.searchParams.set("country", params.country);
   }
   if (params.search_lang) {
-    url.searchParams.set("search_lang", params.search_lang);
+    url.searchParams.set("search_lang", normalizeSearchLang(params.search_lang) ?? params.search_lang);
   }
   if (params.ui_lang) {
     url.searchParams.set("ui_lang", params.ui_lang);
