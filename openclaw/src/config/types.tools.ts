@@ -136,6 +136,30 @@ export type MediaToolsConfig = {
   video?: MediaUnderstandingConfig;
 };
 
+export type ToolLoopDetectionDetectorConfig = {
+  /** Enable warning/blocking for repeated identical calls to the same tool/params. */
+  genericRepeat?: boolean;
+  /** Enable warning/blocking for known no-progress polling loops. */
+  knownPollNoProgress?: boolean;
+  /** Enable warning/blocking for no-progress ping-pong alternating patterns. */
+  pingPong?: boolean;
+};
+
+export type ToolLoopDetectionConfig = {
+  /** Enable tool-loop protection (default: false). */
+  enabled?: boolean;
+  /** Maximum tool call history entries retained for loop detection (default: 30). */
+  historySize?: number;
+  /** Warning threshold before a warning-only loop classification (default: 10). */
+  warningThreshold?: number;
+  /** Critical threshold for blocking repetitive loops (default: 20). */
+  criticalThreshold?: number;
+  /** Global no-progress breaker threshold (default: 30). */
+  globalCircuitBreakerThreshold?: number;
+  /** Detector toggles. */
+  detectors?: ToolLoopDetectionDetectorConfig;
+};
+
 export type ToolProfileId = "minimal" | "coding" | "messaging" | "full";
 
 export type ToolPolicyConfig = {
@@ -213,6 +237,8 @@ export type AgentToolsConfig = {
   };
   /** Exec tool defaults for this agent. */
   exec?: ExecToolConfig;
+  /** Tool loop detection config for this agent. */
+  loopDetection?: ToolLoopDetectionConfig;
   sandbox?: {
     tools?: {
       allow?: string[];
@@ -431,6 +457,8 @@ export type ToolsConfig = {
   };
   /** Exec tool defaults. */
   exec?: ExecToolConfig;
+  /** Tool loop detection config. */
+  loopDetection?: ToolLoopDetectionConfig;
   /** Sub-agent tool policy defaults (deny wins). */
   subagents?: {
     /** Default model selection for spawned sub-agents (string or {primary,fallbacks}). */
