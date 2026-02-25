@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "xhs-toolkit": {
+      "description": "小红书创作者MCP工具包 - 发布笔记、登录、数据分析",
+      "command": "/Users/oscar/moltbot/xhs-toolkit/.venv/bin/python",
+      "args": ["-m", "src.server.mcp_server", "--stdio"],
+      "cwd": "/Users/oscar/moltbot/xhs-toolkit",
+      "env": {
+        "PYTHONPATH": "/Users/oscar/moltbot/xhs-toolkit"
+      }
+    }
+  }
+}
