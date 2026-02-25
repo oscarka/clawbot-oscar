@@ -63,19 +63,19 @@ const WebFetchSchema = Type.Object({
 
 type WebFetchConfig = NonNullable<OpenClawConfig["tools"]>["web"] extends infer Web
   ? Web extends { fetch?: infer Fetch }
-    ? Fetch
-    : undefined
+  ? Fetch
+  : undefined
   : undefined;
 
 type FirecrawlFetchConfig =
   | {
-      enabled?: boolean;
-      apiKey?: string;
-      baseUrl?: string;
-      onlyMainContent?: boolean;
-      maxAgeMs?: number;
-      timeoutSeconds?: number;
-    }
+    enabled?: boolean;
+    apiKey?: string;
+    baseUrl?: string;
+    onlyMainContent?: boolean;
+    maxAgeMs?: number;
+    timeoutSeconds?: number;
+  }
   | undefined;
 
 function resolveFetchConfig(cfg?: OpenClawConfig): WebFetchConfig {
@@ -329,6 +329,53 @@ export async function fetchFirecrawlContent(params: {
   };
 }
 
+/**
+ * Build an actionable suggestion string for the AI agent when web_fetch fails.
+ * This guides the agent to try alternative approaches instead of retrying the same URL.
+ */
+function buildFetchFailureSuggestion(status: number, url: string): string {
+  const domain = (() => {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
+  })();
+
+  if (status === 403) {
+    return (
+      `[Suggestion] This website (${domain}) is blocking automated access. ` +
+      `Do NOT retry this URL. Instead: ` +
+      `(1) Use web_search to find the same information from other sources, ` +
+      `(2) Try a cached version via "cache:${url}" in web_search, or ` +
+      `(3) Try an alternative website that provides similar content.`
+    );
+  }
+  if (status === 404) {
+    return (
+      `[Suggestion] This page does not exist (404). ` +
+      `Do NOT retry this URL. Instead: ` +
+      `(1) Double-check the URL for typos, ` +
+      `(2) Use web_search to find the correct URL or alternative source, or ` +
+      `(3) Try the website's homepage (${domain}) and navigate from there.`
+    );
+  }
+  if (status === 429) {
+    return (
+      `[Suggestion] Rate limited by ${domain}. ` +
+      `Wait at least 30 seconds before retrying, or use web_search to find the information from a different source.`
+    );
+  }
+  if (status >= 500) {
+    return (
+      `[Suggestion] Server error from ${domain} (${status}). ` +
+      `The server may be temporarily down. Try once more after a brief wait, ` +
+      `or use web_search to find the information from an alternative source.`
+    );
+  }
+  return "";
+}
+
 async function runWebFetch(params: {
   url: string;
   extractMode: ExtractMode;
@@ -454,7 +501,11 @@ async function runWebFetch(params: {
         contentType: res.headers.get("content-type"),
         maxChars: DEFAULT_ERROR_MAX_CHARS,
       });
-      throw new Error(`Web fetch failed (${res.status}): ${detail || res.statusText}`);
+      // Return structured error with actionable suggestions for the AI agent
+      const suggestion = buildFetchFailureSuggestion(res.status, params.url);
+      throw new Error(
+        `Web fetch failed (${res.status}): ${detail || res.statusText}${suggestion ? `\n\n${suggestion}` : ""}`,
+      );
     }
 
     const contentType = res.headers.get("content-type") ?? "application/octet-stream";
