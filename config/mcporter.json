@@ -3,10 +3,38 @@
     "xhs-toolkit": {
       "description": "小红书创作者MCP工具包 - 发布笔记、登录、数据分析",
       "command": "/Users/oscar/moltbot/xhs-toolkit/.venv/bin/python",
-      "args": ["-m", "src.server.mcp_server", "--stdio"],
+      "args": [
+        "-m",
+        "src.server.mcp_server",
+        "--stdio"
+      ],
       "cwd": "/Users/oscar/moltbot/xhs-toolkit",
       "env": {
         "PYTHONPATH": "/Users/oscar/moltbot/xhs-toolkit"
+      }
+    },
+    "android-automation": {
+      "description": "Android手机完全控制 - 点击、滑动、输入、截图、获取UI树、打开应用",
+      "command": "/Users/oscar/moltbot/android-mcp-server/.venv/bin/python",
+      "args": [
+        "/Users/oscar/moltbot/android-mcp-server/android_mcp_server.py"
+      ],
+      "cwd": "/Users/oscar/moltbot/android-mcp-server"
+    }
+  },
+  "_disabled_mcpServers": {
+    "notebooklm-toolkit": {
+      "_note": "已屏蔽，改用 nblm-1.0.1 脚本直接操作 NotebookLM。如需恢复，移回 mcpServers 即可。",
+      "description": "NotebookLM自动化工具 - 上传文件生成Slide Deck PDF",
+      "command": "/Users/oscar/moltbot/notebooklm-toolkit/.venv/bin/python",
+      "args": [
+        "-m",
+        "src.server.mcp_server",
+        "--stdio"
+      ],
+      "cwd": "/Users/oscar/moltbot/notebooklm-toolkit",
+      "env": {
+        "PYTHONPATH": "/Users/oscar/moltbot/notebooklm-toolkit"
       }
     }
   }

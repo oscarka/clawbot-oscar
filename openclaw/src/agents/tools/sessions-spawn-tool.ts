@@ -119,10 +119,10 @@ export function createSessionsSpawnTool(opts?: {
       }
       const requesterInternalKey = requesterSessionKey
         ? resolveInternalSessionKey({
-            key: requesterSessionKey,
-            alias,
-            mainKey,
-          })
+          key: requesterSessionKey,
+          alias,
+          mainKey,
+        })
         : alias;
       const requesterDisplayKey = resolveDisplaySessionKey({
         key: requesterInternalKey,
@@ -229,6 +229,8 @@ export function createSessionsSpawnTool(opts?: {
             groupChannel: opts?.agentGroupChannel ?? undefined,
             groupSpace: opts?.agentGroupSpace ?? undefined,
           },
+          clientName: "node-host",
+          mode: "backend",
           timeoutMs: 10_000,
         })) as { runId?: string };
         if (typeof response?.runId === "string" && response.runId) {

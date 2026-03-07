@@ -32,4 +32,19 @@ describe("gateway tool defaults", () => {
       }),
     );
   });
+
+  it("rejects invalid gatewayUrl placeholder, falls back to config", async () => {
+    callGatewayMock.mockResolvedValueOnce({ ok: true });
+    await callGatewayTool("health", { gatewayUrl: "user_gateway_url" }, {});
+    expect(callGatewayMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: undefined,
+      }),
+    );
+  });
+
+  it("accepts wss:// URLs", () => {
+    const opts = resolveGatewayOptions({ gatewayUrl: "wss://gateway.example.com:18789" });
+    expect(opts.url).toBe("wss://gateway.example.com:18789");
+  });
 });

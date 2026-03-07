@@ -31,6 +31,8 @@ export const DEFAULT_SKILLS_WATCH_IGNORED: RegExp[] = [
   /(^|[\\/])\.git([\\/]|$)/,
   /(^|[\\/])node_modules([\\/]|$)/,
   /(^|[\\/])dist([\\/]|$)/,
+  /(^|[\\/])\.venv([\\/]|$)/,
+  /(^|[\\/])__pycache__([\\/]|$)/,
 ];
 
 function bumpVersion(current: number): number {
@@ -112,7 +114,7 @@ export function ensureSkillsWatcher(params: { workspaceDir: string; config?: Ope
     if (existing) {
       watchers.delete(workspaceDir);
       if (existing.timer) clearTimeout(existing.timer);
-      void existing.watcher.close().catch(() => {});
+      void existing.watcher.close().catch(() => { });
     }
     return;
   }
@@ -125,7 +127,7 @@ export function ensureSkillsWatcher(params: { workspaceDir: string; config?: Ope
   if (existing) {
     watchers.delete(workspaceDir);
     if (existing.timer) clearTimeout(existing.timer);
-    void existing.watcher.close().catch(() => {});
+    void existing.watcher.close().catch(() => { });
   }
 
   const watcher = chokidar.watch(watchPaths, {

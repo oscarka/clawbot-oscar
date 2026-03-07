@@ -9,12 +9,21 @@ export type GatewayCallOptions = {
   timeoutMs?: number;
 };
 
+/** Reject placeholder or invalid gatewayUrl; only accept ws:// or wss:// URLs. */
+function isValidGatewayUrl(raw: string): boolean {
+  const trimmed = raw.trim();
+  if (!trimmed) return false;
+  return trimmed.startsWith("ws://") || trimmed.startsWith("wss://");
+}
+
 export function resolveGatewayOptions(opts?: GatewayCallOptions) {
   // Prefer an explicit override; otherwise let callGateway choose based on config.
-  const url =
+  // Reject invalid/placeholder values (e.g. "user_gateway_url") to avoid connection failures.
+  const rawUrl =
     typeof opts?.gatewayUrl === "string" && opts.gatewayUrl.trim()
       ? opts.gatewayUrl.trim()
       : undefined;
+  const url = rawUrl && isValidGatewayUrl(rawUrl) ? rawUrl : undefined;
   const token =
     typeof opts?.gatewayToken === "string" && opts.gatewayToken.trim()
       ? opts.gatewayToken.trim()

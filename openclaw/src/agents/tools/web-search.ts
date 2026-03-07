@@ -54,6 +54,35 @@ function normalizeSearchLang(lang: string | undefined): string | undefined {
   return BRAVE_SEARCH_LANG_MAP[lower] ?? lower;
 }
 
+/**
+ * Brave ui_lang requires full locale (e.g. zh-CN not zh). Map short codes to valid values.
+ * Valid: zh-CN, zh-TW, zh-HK, en-US, en-GB, etc. (see Brave API docs).
+ */
+const BRAVE_UI_LANG_MAP: Record<string, string> = {
+  zh: "zh-CN",
+  "zh-cn": "zh-CN",
+  "zh-tw": "zh-TW",
+  "zh-hk": "zh-HK",
+  en: "en-US",
+  "en-us": "en-US",
+  "en-gb": "en-GB",
+  de: "de-DE",
+  fr: "fr-FR",
+  ja: "ja-JP",
+  ko: "ko-KR",
+  es: "es-ES",
+  pt: "pt-BR",
+  ru: "ru-RU",
+};
+
+function normalizeUiLang(lang: string | undefined): string | undefined {
+  if (!lang) return undefined;
+  const normalized = lang.trim();
+  if (!normalized) return undefined;
+  const mapped = BRAVE_UI_LANG_MAP[normalized.toLowerCase()];
+  return mapped ?? normalized;
+}
+
 const WebSearchSchema = Type.Object({
   query: Type.String({ description: "Search query string." }),
   count: Type.Optional(
@@ -387,7 +416,7 @@ async function runWebSearch(params: {
     url.searchParams.set("search_lang", normalizeSearchLang(params.search_lang) ?? params.search_lang);
   }
   if (params.ui_lang) {
-    url.searchParams.set("ui_lang", params.ui_lang);
+    url.searchParams.set("ui_lang", normalizeUiLang(params.ui_lang) ?? params.ui_lang);
   }
   if (params.freshness) {
     url.searchParams.set("freshness", params.freshness);
