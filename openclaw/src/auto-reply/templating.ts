@@ -66,6 +66,8 @@ export type MsgContext = {
   MediaPaths?: string[];
   MediaUrls?: string[];
   MediaTypes?: string[];
+  /** Extra media URLs fetched from quoted parent messages etc. */
+  AdditionalMediaUrls?: string[];
   /** Telegram sticker metadata (emoji, set name, file IDs, cached description). */
   Sticker?: StickerMetadata;
   OutputDir?: string;

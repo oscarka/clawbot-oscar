@@ -27,6 +27,7 @@ import { MissingEnvVarError, resolveConfigEnvVars } from "./env-substitution.js"
 import { collectConfigEnvVars } from "./env-vars.js";
 import { ConfigIncludeError, resolveConfigIncludes } from "./includes.js";
 import { findLegacyConfigIssues } from "./legacy.js";
+import { migrateChannelIdEntriesInPlugins } from "./plugin-auto-enable.js";
 import { normalizeConfigPaths } from "./normalize-paths.js";
 import { resolveConfigPath, resolveDefaultConfigCandidates, resolveStateDir } from "./paths.js";
 import { applyConfigOverrides } from "./runtime-overrides.js";
@@ -234,7 +235,8 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       if (preValidationDuplicates.length > 0) {
         throw new DuplicateAgentDirError(preValidationDuplicates);
       }
-      const validated = validateConfigObjectWithPlugins(resolvedConfig);
+      const migrated = migrateChannelIdEntriesInPlugins(resolvedConfig as OpenClawConfig);
+      const validated = validateConfigObjectWithPlugins(migrated);
       if (!validated.ok) {
         const details = validated.issues
           .map((iss) => `- ${iss.path || "<root>"}: ${iss.message}`)
@@ -406,7 +408,8 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       const resolvedConfigRaw = substituted;
       const legacyIssues = findLegacyConfigIssues(resolvedConfigRaw);
 
-      const validated = validateConfigObjectWithPlugins(resolvedConfigRaw);
+      const migrated = migrateChannelIdEntriesInPlugins(resolvedConfigRaw as OpenClawConfig);
+      const validated = validateConfigObjectWithPlugins(migrated);
       if (!validated.ok) {
         return {
           path: configPath,
@@ -420,6 +423,14 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
           warnings: validated.warnings,
           legacyIssues,
         };
+      }
+
+      if (migrated !== resolvedConfigRaw) {
+        try {
+          await writeConfigFile(migrated);
+        } catch (writeErr) {
+          deps.logger?.warn?.(`Failed to persist migrated config: ${String(writeErr)}`);
+        }
       }
 
       warnIfConfigFromFuture(validated.config, deps.logger);

@@ -58,6 +58,8 @@ describe("subagent registry persistence", () => {
       cleanup: "keep",
     });
 
+    await mod1.flushSubagentRegistryPersist();
+
     const registryPath = path.join(tempStateDir, "subagents", "runs.json");
     const raw = await fs.readFile(registryPath, "utf8");
     const parsed = JSON.parse(raw) as { runs?: Record<string, unknown> };
@@ -211,6 +213,7 @@ describe("subagent registry persistence", () => {
     const mod1 = await import("./subagent-registry.js");
     mod1.initSubagentRegistry();
     await new Promise((r) => setTimeout(r, 0));
+    await mod1.flushSubagentRegistryPersist();
 
     expect(announceSpy).toHaveBeenCalledTimes(1);
     const afterFirst = JSON.parse(await fs.readFile(registryPath, "utf8")) as {
@@ -224,6 +227,7 @@ describe("subagent registry persistence", () => {
     const mod2 = await import("./subagent-registry.js");
     mod2.initSubagentRegistry();
     await new Promise((r) => setTimeout(r, 0));
+    await mod2.flushSubagentRegistryPersist();
 
     expect(announceSpy).toHaveBeenCalledTimes(2);
     const afterSecond = JSON.parse(await fs.readFile(registryPath, "utf8")) as {

@@ -204,6 +204,18 @@ export type AgentDefaultsConfig = {
     archiveAfterMinutes?: number;
     /** Default model selection for spawned sub-agents (string or {primary,fallbacks}). */
     model?: string | { primary?: string; fallbacks?: string[] };
+    /** Mirror [派活]/[回报] to a group for visibility. Optional; no config = no-op. */
+    internalCommGroup?: {
+      channel: string;
+      to: string;
+      accountId?: string;
+    };
+    /** Progress check interval (minutes). 0 = disabled. Default: 5. */
+    progressCheckIntervalMinutes?: number;
+    /** Only send [进度] when run has been active for at least this many minutes. Default: 5. */
+    progressCheckThresholdMinutes?: number;
+    /** Consider run timed out after this many minutes; send [超时]. Default: 30. */
+    runTimeoutMinutes?: number;
   };
   /** Optional sandbox settings for non-main sessions. */
   sandbox?: {

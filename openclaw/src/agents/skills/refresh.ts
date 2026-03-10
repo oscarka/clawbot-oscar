@@ -33,6 +33,13 @@ export const DEFAULT_SKILLS_WATCH_IGNORED: RegExp[] = [
   /(^|[\\/])dist([\\/]|$)/,
   /(^|[\\/])\.venv([\\/]|$)/,
   /(^|[\\/])__pycache__([\\/]|$)/,
+  // Large trees that cause EMFILE when extraDirs points at a monorepo
+  /(^|[\\/])\.next([\\/]|$)/,
+  /(^|[\\/])chrome-data([\\/]|$)/,
+  /(^|[\\/])Cache([\\/]|$)/,
+  /(^|[\\/])Cache_Data([\\/]|$)/,
+  /(^|[\\/])root-tools([\\/]|$)/,
+  /(^|[\\/])\.turbo([\\/]|$)/,
 ];
 
 function bumpVersion(current: number): number {

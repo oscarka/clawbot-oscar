@@ -53,6 +53,20 @@ vi.mock("../config/config.js", async (importOriginal) => {
   };
 });
 
+describe("buildSubagentSystemPrompt", () => {
+  it("includes artifacts section for automatic completion delivery", async () => {
+    const { buildSubagentSystemPrompt } = await import("./subagent-announce.js");
+    const prompt = buildSubagentSystemPrompt({
+      childSessionKey: "agent:main:subagent:test",
+      task: "generate report",
+    });
+    expect(prompt).toContain("完成物回报");
+    expect(prompt).toContain("OPENCLAW_ARTIFACTS_DIR");
+    expect(prompt).toContain("links.json");
+    expect(prompt).toContain("automatically deliver");
+  });
+});
+
 describe("subagent announce formatting", () => {
   beforeEach(() => {
     agentSpy.mockClear();

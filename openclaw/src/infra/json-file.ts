@@ -19,3 +19,15 @@ export function saveJsonFile(pathname: string, data: unknown) {
   fs.writeFileSync(pathname, `${JSON.stringify(data, null, 2)}\n`, "utf8");
   fs.chmodSync(pathname, 0o600);
 }
+
+/** Async version; does not block the event loop. */
+export async function saveJsonFileAsync(pathname: string, data: unknown): Promise<void> {
+  const dir = path.dirname(pathname);
+  await fs.promises.mkdir(dir, { recursive: true, mode: 0o700 });
+  await fs.promises.writeFile(
+    pathname,
+    `${JSON.stringify(data, null, 2)}\n`,
+    "utf8",
+  );
+  await fs.promises.chmod(pathname, 0o600);
+}

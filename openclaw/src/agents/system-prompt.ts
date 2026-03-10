@@ -17,9 +17,20 @@ function buildSkillsSection(params: {
   isMinimal: boolean;
   readToolName: string;
 }) {
-  if (params.isMinimal) return [];
   const trimmed = params.skillsPrompt?.trim();
   if (!trimmed) return [];
+
+  if (params.isMinimal) {
+    // Subagent: show skills with initiative-style guidance (agent decides when to use)
+    return [
+      "## Available Skills",
+      `Skills below may help with your task. Use your initiative: if one clearly applies, read its SKILL.md at <location> with \`${params.readToolName}\` and follow it.`,
+      "If none apply, skip. Never read more than one skill up front.",
+      trimmed,
+      "",
+    ];
+  }
+
   return [
     "## Skills (mandatory)",
     "Before replying: scan <available_skills> <description> entries.",
@@ -425,7 +436,7 @@ export function buildAgentSystemPrompt(params: {
       "- For YouTube links: use `nblm_cli.py upload-youtube \"https://youtube.com/...\" --notebook-id <id>` instead.",
       "",
       "**Step 2: Generate Slide Deck (this triggers NotebookLM's real AI slide generation)**",
-      "- Start generation in background: `exec` with `background: true` and command `cd /Users/oscar/moltbot/nblm-1.0.1 && .venv/bin/python scripts/run.py artifact_manager.py generate-slides --notebook-id <id> --wait --output /Users/oscar/Downloads/NotebookLM_Slides.pdf`",
+      "- Start generation in background: `exec` with `background: true` and command `cd /Users/oscar/moltbot/nblm-1.0.1 && .venv/bin/python scripts/run.py artifact_manager.py generate-slides --notebook-id <id> --wait --output \"${OPENCLAW_ARTIFACTS_DIR:-/tmp}/slides.pdf\"`",
       "- The script handles polling internally. It will print progress lines like '⏳ Processing...' and finally '✅ Saved to: ...' when done.",
       "- IMPORTANT: Do NOT poll in a tight loop. After starting background, do ONE `exec` with `sleep 90` (yieldMs=100000), then `process poll` on the session. Repeat sleep+poll 2-3 times max.",
       "- When process poll shows 'exited' with exit code 0, read the log with `process log` to find the '✅ Saved to: ...' line and send that file to the user via `message` tool (action=send, media=/path/to/file.pdf).",
@@ -433,7 +444,7 @@ export function buildAgentSystemPrompt(params: {
       "",
       "#### 生成 Infographic / 一页概览图 / 信息图",
       "Use `artifact_manager.py generate-infographic` — this triggers NotebookLM's native AI infographic engine. Generation takes ~2 minutes.",
-      "- `exec` with `cd /Users/oscar/moltbot/nblm-1.0.1 && .venv/bin/python scripts/run.py artifact_manager.py generate-infographic --notebook-id <id> --wait --output /tmp/infographic.png --orientation LANDSCAPE --detail-level STANDARD`",
+      "- `exec` with `cd /Users/oscar/moltbot/nblm-1.0.1 && .venv/bin/python scripts/run.py artifact_manager.py generate-infographic --notebook-id <id> --wait --output \"${OPENCLAW_ARTIFACTS_DIR:-/tmp}/infographic.png\" --orientation LANDSCAPE --detail-level STANDARD`",
       "- Orientation options: LANDSCAPE (default, best for overview), PORTRAIT, SQUARE.",
       "- Detail options: CONCISE, STANDARD, DETAILED.",
       "- The output is a high-quality PNG image.",
@@ -447,7 +458,7 @@ export function buildAgentSystemPrompt(params: {
       "   `exec` with `cd /Users/oscar/moltbot/nblm-1.0.1 && echo '<collected content>' | .venv/bin/python scripts/run.py nblm_cli.py upload-text \"Source Title\" --notebook-id <id>`",
       "   Or for URLs: `nblm_cli.py upload-url \"https://...\" --notebook-id <id>` for each URL.",
       "3. **Wait for indexing**: `exec` with `sleep 15` (NotebookLM needs a few seconds to index).",
-      "4. **Generate infographic**: `exec` with `cd /Users/oscar/moltbot/nblm-1.0.1 && .venv/bin/python scripts/run.py artifact_manager.py generate-infographic --notebook-id <id> --wait --output /tmp/infographic_<timestamp>.png --orientation LANDSCAPE --detail-level STANDARD`",
+      "4. **Generate infographic**: `exec` with `cd /Users/oscar/moltbot/nblm-1.0.1 && .venv/bin/python scripts/run.py artifact_manager.py generate-infographic --notebook-id <id> --wait --output \"${OPENCLAW_ARTIFACTS_DIR:-/tmp}/infographic.png\" --orientation LANDSCAPE --detail-level STANDARD`",
       "5. **Post to 小红书**: `exec` with `MCPORTER_CALL_TIMEOUT=300000 mcporter call xhs-toolkit.smart_publish_note --args '{\"title\":\"...\",\"content\":\"...\",\"images\":[\"/tmp/infographic_<timestamp>.png\"],\"topics\":[]}'`",
       "   Remember: properly escape all JSON control characters in title/content!",
       "CRITICAL: Do NOT skip the NotebookLM infographic step. Do NOT generate images yourself or use screenshots. The user explicitly wants NotebookLM's AI-generated infographic.",
@@ -456,7 +467,7 @@ export function buildAgentSystemPrompt(params: {
       "- List notebooks: `nblm_cli.py notebooks`",
       "- Ask a question: `nblm_cli.py ask \"your question\" --notebook-id <id>`",
       "- List sources: `nblm_cli.py sources --id <notebook_id>`",
-      "- Generate podcast: `artifact_manager.py generate --format DEEP_DIVE --wait --output podcast.mp3 --notebook-id <id>`",
+      "- Generate podcast: `artifact_manager.py generate --format DEEP_DIVE --wait --output \"${OPENCLAW_ARTIFACTS_DIR:-.}/podcast.mp3\" --notebook-id <id>`",
       "- Upload file to existing notebook: `source_manager.py add --file \"/path/to/file\" --use-active` (or `--notebook-id <id>`)",
       "- Upload text to existing notebook: `nblm_cli.py upload-text \"Title\" --content \"text content\" --notebook-id <id>` (or pipe from stdin for long text)",
       "",

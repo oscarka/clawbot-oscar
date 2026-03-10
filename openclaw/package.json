@@ -123,6 +123,8 @@
     "test:watch": "vitest",
     "test:ui": "pnpm --dir ui test",
     "test:force": "node --import tsx scripts/test-force.ts",
+    "ab-test:researcher-404": "node --import tsx scripts/ab-test-researcher-404.ts",
+    "test:intel-search-injection": "node --import tsx scripts/test-intel-search-injection.ts",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "test:live": "OPENCLAW_LIVE_TEST=1 CLAWDBOT_LIVE_TEST=1 vitest run --config vitest.live.config.ts",

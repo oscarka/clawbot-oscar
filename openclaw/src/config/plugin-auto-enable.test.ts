@@ -1,5 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { applyPluginAutoEnable } from "./plugin-auto-enable.js";
+import { applyPluginAutoEnable, migrateChannelIdEntriesInPlugins } from "./plugin-auto-enable.js";
+
+describe("migrateChannelIdEntriesInPlugins", () => {
+  it("returns config unchanged when all entries use valid plugin ids", () => {
+    const cfg = { plugins: { entries: { slack: { enabled: true } } } };
+    const result = migrateChannelIdEntriesInPlugins(cfg);
+    expect(result).toBe(cfg);
+  });
+
+  it("migrates feishu to feishu-openclaw when extension is installed", () => {
+    const cfg = {
+      plugins: {
+        entries: {
+          feishu: { enabled: true },
+        },
+      },
+    };
+    const result = migrateChannelIdEntriesInPlugins(cfg);
+    if (result !== cfg) {
+      expect(result.plugins?.entries?.["feishu-openclaw"]).toBeDefined();
+      expect(result.plugins?.entries?.feishu).toBeUndefined();
+    }
+  });
+});
 
 describe("applyPluginAutoEnable", () => {
   it("enables configured channel plugins and updates allowlist", () => {

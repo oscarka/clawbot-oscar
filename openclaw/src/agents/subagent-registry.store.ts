@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { STATE_DIR } from "../config/paths.js";
-import { loadJsonFile, saveJsonFile } from "../infra/json-file.js";
+import { loadJsonFile, saveJsonFile, saveJsonFileAsync } from "../infra/json-file.js";
 import { normalizeDeliveryContext } from "../utils/delivery-context.js";
 import type { SubagentRunRecord } from "./subagent-registry.js";
 
@@ -104,4 +104,20 @@ export function saveSubagentRegistryToDisk(runs: Map<string, SubagentRunRecord>)
     runs: serialized,
   };
   saveJsonFile(pathname, out);
+}
+
+/** Async version; does not block the event loop. */
+export async function saveSubagentRegistryToDiskAsync(
+  runs: Map<string, SubagentRunRecord>,
+): Promise<void> {
+  const pathname = resolveSubagentRegistryPath();
+  const serialized: Record<string, PersistedSubagentRunRecord> = {};
+  for (const [runId, entry] of runs.entries()) {
+    serialized[runId] = entry;
+  }
+  const out: PersistedSubagentRegistry = {
+    version: REGISTRY_VERSION,
+    runs: serialized,
+  };
+  await saveJsonFileAsync(pathname, out);
 }

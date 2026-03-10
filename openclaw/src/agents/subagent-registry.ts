@@ -1,11 +1,18 @@
 import { loadConfig } from "../config/config.js";
 import { callGateway } from "../gateway/call.js";
 import { onAgentEvent } from "../infra/agent-events.js";
+import { resolveAgentIdFromSessionKey } from "../routing/session-key.js";
 import { type DeliveryContext, normalizeDeliveryContext } from "../utils/delivery-context.js";
 import { runSubagentAnnounceFlow, type SubagentRunOutcome } from "./subagent-announce.js";
 import {
+  maybeSendInternalCommAccept,
+  maybeSendInternalCommProgress,
+  maybeSendInternalCommTimeout,
+} from "./subagent-internal-comm.js";
+import {
   loadSubagentRegistryFromDisk,
   saveSubagentRegistryToDisk,
+  saveSubagentRegistryToDiskAsync,
 } from "./subagent-registry.store.js";
 import { resolveAgentTimeoutMs } from "./timeout.js";
 
@@ -25,21 +32,38 @@ export type SubagentRunRecord = {
   archiveAtMs?: number;
   cleanupCompletedAt?: number;
   cleanupHandled?: boolean;
+  /** When [进度] was last sent; used to throttle progress messages. */
+  lastProgressSentAt?: number;
 };
 
 const subagentRuns = new Map<string, SubagentRunRecord>();
 let sweeper: NodeJS.Timeout | null = null;
+let progressChecker: NodeJS.Timeout | null = null;
 let listenerStarted = false;
 let listenerStop: (() => void) | null = null;
 // Use var to avoid TDZ when init runs across circular imports during bootstrap.
 var restoreAttempted = false;
 
+let pendingPersist: Promise<void> | null = null;
+
 function persistSubagentRuns() {
-  try {
-    saveSubagentRegistryToDisk(subagentRuns);
-  } catch {
-    // ignore persistence failures
-  }
+  if (pendingPersist) return;
+  pendingPersist = (async () => {
+    await new Promise<void>((r) => setImmediate(r));
+    try {
+      await saveSubagentRegistryToDiskAsync(subagentRuns);
+    } catch {
+      // ignore persistence failures
+    }
+  })();
+  pendingPersist.finally(() => {
+    pendingPersist = null;
+  });
+}
+
+/** Wait for any pending async persist to complete. Use in tests. */
+export async function flushSubagentRegistryPersist(): Promise<void> {
+  if (pendingPersist) await pendingPersist;
 }
 
 const resumedRuns = new Set<string>();
@@ -115,6 +139,25 @@ function resolveArchiveAfterMs(cfg?: ReturnType<typeof loadConfig>) {
   return Math.max(1, Math.floor(minutes)) * 60_000;
 }
 
+function resolveProgressCheckIntervalMs(cfg?: ReturnType<typeof loadConfig>): number {
+  const config = cfg ?? loadConfig();
+  const minutes = config.agents?.defaults?.subagents?.progressCheckIntervalMinutes ?? 5;
+  if (!Number.isFinite(minutes) || minutes <= 0) return 0;
+  return Math.max(1, Math.floor(minutes)) * 60_000;
+}
+
+function resolveProgressCheckThresholdMinutes(cfg?: ReturnType<typeof loadConfig>): number {
+  const config = cfg ?? loadConfig();
+  const minutes = config.agents?.defaults?.subagents?.progressCheckThresholdMinutes ?? 5;
+  return Number.isFinite(minutes) && minutes > 0 ? Math.floor(minutes) : 5;
+}
+
+function resolveRunTimeoutMinutes(cfg?: ReturnType<typeof loadConfig>): number {
+  const config = cfg ?? loadConfig();
+  const minutes = config.agents?.defaults?.subagents?.runTimeoutMinutes ?? 30;
+  return Number.isFinite(minutes) && minutes > 0 ? Math.floor(minutes) : 30;
+}
+
 function resolveSubagentWaitTimeoutMs(
   cfg: ReturnType<typeof loadConfig>,
   runTimeoutSeconds?: number,
@@ -157,6 +200,86 @@ async function sweepSubagentRuns() {
   if (subagentRuns.size === 0) stopSweeper();
 }
 
+function startProgressChecker() {
+  if (progressChecker) return;
+  const intervalMs = resolveProgressCheckIntervalMs();
+  if (intervalMs <= 0) return;
+  progressChecker = setInterval(() => {
+    void runProgressCheck();
+  }, intervalMs);
+  progressChecker.unref?.();
+}
+
+function stopProgressChecker() {
+  if (!progressChecker) return;
+  clearInterval(progressChecker);
+  progressChecker = null;
+}
+
+async function runProgressCheck() {
+  const cfg = loadConfig();
+  const thresholdMinutes = resolveProgressCheckThresholdMinutes(cfg);
+  const timeoutMinutes = resolveRunTimeoutMinutes(cfg);
+  const intervalMs = resolveProgressCheckIntervalMs(cfg);
+  const now = Date.now();
+  const agentId = (entry: SubagentRunRecord) => resolveAgentIdFromSessionKey(entry.childSessionKey);
+
+  for (const [runId, entry] of subagentRuns.entries()) {
+    if (entry.endedAt || entry.cleanupCompletedAt) continue;
+    const startedAt = entry.startedAt ?? entry.createdAt;
+    const runningMs = now - startedAt;
+    const runningMinutes = Math.floor(runningMs / 60_000);
+
+    if (runningMinutes >= timeoutMinutes) {
+      maybeSendInternalCommTimeout({
+        task: entry.task,
+        agentId: agentId(entry),
+        childSessionKey: entry.childSessionKey,
+        label: entry.label,
+      });
+      entry.endedAt = now;
+      entry.outcome = { status: "timeout" };
+      persistSubagentRuns();
+      if (!beginSubagentCleanup(runId)) continue;
+      const requesterOrigin = normalizeDeliveryContext(entry.requesterOrigin);
+      void runSubagentAnnounceFlow({
+        childSessionKey: entry.childSessionKey,
+        childRunId: entry.runId,
+        requesterSessionKey: entry.requesterSessionKey,
+        requesterOrigin,
+        requesterDisplayKey: entry.requesterDisplayKey,
+        task: entry.task,
+        timeoutMs: 30_000,
+        cleanup: entry.cleanup,
+        waitForCompletion: false,
+        startedAt: entry.startedAt,
+        endedAt: entry.endedAt,
+        label: entry.label,
+        outcome: entry.outcome,
+      }).then((didAnnounce) => {
+        finalizeSubagentCleanup(runId, entry.cleanup, didAnnounce);
+      });
+      continue;
+    }
+
+    if (runningMinutes >= thresholdMinutes) {
+      const lastSent = entry.lastProgressSentAt ?? 0;
+      if (now - lastSent >= (intervalMs || 60_000)) {
+        maybeSendInternalCommProgress({
+          task: entry.task,
+          agentId: agentId(entry),
+          childSessionKey: entry.childSessionKey,
+          label: entry.label,
+          runningMinutes,
+        });
+        entry.lastProgressSentAt = now;
+        persistSubagentRuns();
+      }
+    }
+  }
+  if (subagentRuns.size === 0) stopProgressChecker();
+}
+
 function ensureListener() {
   if (listenerStarted) {
     return;
@@ -176,6 +299,12 @@ function ensureListener() {
         entry.startedAt = startedAt;
         persistSubagentRuns();
       }
+      maybeSendInternalCommAccept({
+        task: entry.task,
+        agentId: resolveAgentIdFromSessionKey(entry.childSessionKey),
+        childSessionKey: entry.childSessionKey,
+        label: entry.label,
+      });
       return;
     }
     if (phase !== "end" && phase !== "error") return;
@@ -276,6 +405,7 @@ export function registerSubagentRun(params: {
   ensureListener();
   persistSubagentRuns();
   if (archiveAfterMs) startSweeper();
+  if (resolveProgressCheckIntervalMs(cfg) > 0) startProgressChecker();
   // Wait for subagent completion via gateway RPC (cross-process).
   // The in-process lifecycle listener is a fallback for embedded runs.
   void waitForSubagentCompletion(params.runId, waitTimeoutMs);
@@ -340,13 +470,19 @@ export function resetSubagentRegistryForTests() {
   subagentRuns.clear();
   resumedRuns.clear();
   stopSweeper();
+  stopProgressChecker();
   restoreAttempted = false;
   if (listenerStop) {
     listenerStop();
     listenerStop = null;
   }
   listenerStarted = false;
-  persistSubagentRuns();
+  pendingPersist = null;
+  try {
+    saveSubagentRegistryToDisk(subagentRuns);
+  } catch {
+    // ignore
+  }
 }
 
 export function addSubagentRunForTests(entry: SubagentRunRecord) {

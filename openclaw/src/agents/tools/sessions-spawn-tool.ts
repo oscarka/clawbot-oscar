@@ -16,6 +16,7 @@ import { resolveAgentConfig } from "../agent-scope.js";
 import { AGENT_LANE_SUBAGENT } from "../lanes.js";
 import { optionalStringEnum } from "../schema/typebox.js";
 import { buildSubagentSystemPrompt } from "../subagent-announce.js";
+import { maybeSendInternalCommSpawn } from "../subagent-internal-comm.js";
 import { registerSubagentRun } from "../subagent-registry.js";
 import type { AnyAgentTool } from "./common.js";
 import { jsonResult, readStringParam } from "./common.js";
@@ -257,6 +258,13 @@ export function createSessionsSpawnTool(opts?: {
         cleanup,
         label: label || undefined,
         runTimeoutSeconds,
+      });
+
+      maybeSendInternalCommSpawn({
+        task,
+        agentId: targetAgentId,
+        childSessionKey,
+        label: label || undefined,
       });
 
       return jsonResult({

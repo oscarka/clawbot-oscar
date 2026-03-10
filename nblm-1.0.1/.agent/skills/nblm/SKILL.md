@@ -9,12 +9,18 @@ Query Google NotebookLM for source-grounded, citation-backed answers.
 
 ## Environment
 
+**CRITICAL: Working directory.** Always `cd` to the nblm project root before running any command:
+```bash
+cd /Users/oscar/moltbot/nblm-1.0.1
+```
+Do NOT use the SKILL.md location or any other path. The `scripts/` folder is at this project root.
+
 All dependencies and authentication are handled automatically:
 - First run creates `.venv` and installs Python/Node.js dependencies
 - If Google auth is missing or expired, a browser window opens automatically
 - No manual pre-flight steps required
 
-**Script location:** `scripts`
+**Script location:** `scripts` (relative to project root above)
 
 ---
 
@@ -128,11 +134,19 @@ python scripts/run.py auth_manager.py setup
 python scripts/run.py auth_manager.py setup --service zlibrary
 ```
 
+## 完成物输出目录（方案 A）
+
+当系统设置了 `OPENCLAW_ARTIFACTS_DIR` 时，生成的 PDF/PNG/MP3 等必须写入该目录，以便自动回报给用户。
+
+- 使用方式：`--output ${OPENCLAW_ARTIFACTS_DIR:-.}/slides.pdf`（若未设置则用当前目录）
+- 示例：`artifact_manager.py generate-slides --wait --output ${OPENCLAW_ARTIFACTS_DIR:-.}/slides.pdf`
+- 链接类完成物（如小红书发布链接）写入同目录下的 `links.json`：`[{"label":"小红书笔记","url":"https://..."}]`
+
 ## PPT vs 大纲 (Slide Deck vs Outline)
 
 **CRITICAL**: 任务含「生成 PPT」「Slide Deck」「演示文稿」「幻灯片」时，必须用 `artifact_manager.py generate-slides` 生成 PPT 文件（PDF），不要用 `ask` 生成大纲。
 
-- **生成 PPT / Slide Deck** → `artifact_manager.py generate-slides --wait --output slides.pdf`
+- **生成 PPT / Slide Deck** → `artifact_manager.py generate-slides --wait --output ${OPENCLAW_ARTIFACTS_DIR:-.}/slides.pdf`
 - **只要大纲 / PPT 大纲 / markdown 大纲** → 才用 `ask` 分析文档并输出大纲
 - **默认**：「生成 PPT」= 生成 Slide Deck 文件，不是大纲
 

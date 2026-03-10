@@ -184,7 +184,7 @@ export async function compactEmbeddedPiSessionDirect(
   try {
     const shouldLoadSkillEntries = !params.skillsSnapshot || !params.skillsSnapshot.resolvedSkills;
     const skillEntries = shouldLoadSkillEntries
-      ? loadWorkspaceSkillEntries(effectiveWorkspace)
+      ? loadWorkspaceSkillEntries(effectiveWorkspace, { config: params.config })
       : [];
     restoreSkillEnv = params.skillsSnapshot
       ? applySkillEnvOverridesFromSnapshot({

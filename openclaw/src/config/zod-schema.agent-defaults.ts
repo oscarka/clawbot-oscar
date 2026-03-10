@@ -150,6 +150,17 @@ export const AgentDefaultsSchema = z
               .strict(),
           ])
           .optional(),
+        internalCommGroup: z
+          .object({
+            channel: z.string().min(1),
+            to: z.string().min(1),
+            accountId: z.string().optional(),
+          })
+          .strict()
+          .optional(),
+        progressCheckIntervalMinutes: z.number().int().min(0).optional(),
+        progressCheckThresholdMinutes: z.number().int().positive().optional(),
+        runTimeoutMinutes: z.number().int().positive().optional(),
       })
       .strict()
       .optional(),

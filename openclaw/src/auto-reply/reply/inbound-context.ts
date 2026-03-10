@@ -67,5 +67,18 @@ export function finalizeInboundContext<T extends Record<string, unknown>>(
   // Always set. Default-deny when upstream forgets to populate it.
   normalized.CommandAuthorized = normalized.CommandAuthorized === true;
 
+  // Merge any additional media from plugin (like Feishu parent replies)
+  if (normalized.AdditionalMediaUrls?.length) {
+    const arr1 = Array.isArray(normalized.MediaUrls) ? normalized.MediaUrls : [];
+    if (normalized.MediaUrl && !arr1.includes(normalized.MediaUrl)) arr1.push(normalized.MediaUrl);
+    normalized.MediaUrls = Array.from(new Set([...arr1, ...normalized.AdditionalMediaUrls]));
+
+    const arr2 = Array.isArray(normalized.MediaPaths) ? normalized.MediaPaths : [];
+    if (normalized.MediaPath && !arr2.includes(normalized.MediaPath)) arr2.push(normalized.MediaPath);
+    // convert file:// URLs to paths
+    const newPaths = normalized.AdditionalMediaUrls.map(u => u.startsWith('file://') ? u.slice(7) : u);
+    normalized.MediaPaths = Array.from(new Set([...arr2, ...newPaths]));
+  }
+
   return normalized as T & FinalizedMsgContext;
 }

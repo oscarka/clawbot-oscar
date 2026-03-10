@@ -1,4 +1,5 @@
-import type { OpenClawConfig } from "./config.js";
+import type { OpenClawConfig } from "./types.js";
+import { resolveAgentWorkspaceDir, resolveDefaultAgentId } from "../agents/agent-scope.js";
 import {
   getChatChannelMeta,
   listChatChannels,
@@ -10,6 +11,7 @@ import {
 } from "../channels/plugins/catalog.js";
 import { normalizeProviderId } from "../agents/model-selection.js";
 import { hasAnyWhatsAppAuth } from "../web/accounts.js";
+import { loadPluginManifestRegistry } from "../plugins/manifest-registry.js";
 
 type PluginEnableChange = {
   pluginId: string;
@@ -65,6 +67,63 @@ function resolveChannelConfig(
   const channels = cfg.channels as Record<string, unknown> | undefined;
   const entry = channels?.[channelId];
   return isRecord(entry) ? entry : null;
+}
+
+/**
+ * Resolve channel id to plugin id. Extension plugins (e.g. feishu-openclaw) use
+ * manifest.id as plugin id but manifest.channels[0] as channel id. Config validation
+ * expects plugins.entries.<pluginId>, so we must use the plugin id when persisting.
+ */
+export function resolvePluginIdForChannel(cfg: OpenClawConfig, channelId: string): string {
+  const workspaceDir = resolveAgentWorkspaceDir(cfg, resolveDefaultAgentId(cfg));
+  const registry = loadPluginManifestRegistry({ config: cfg, workspaceDir });
+  const provider = registry.plugins.find(
+    (record) =>
+      Array.isArray(record.channels) &&
+      record.channels.some((c) => String(c).trim().toLowerCase() === channelId.trim().toLowerCase()),
+  );
+  return provider?.id ?? channelId;
+}
+
+/**
+ * Migrate plugins.entries keys from channel id to plugin id. Old plugin-auto-enable
+ * wrote e.g. plugins.entries.feishu, but validation expects plugins.entries.feishu-openclaw.
+ * This migrates in-place so validation passes.
+ */
+export function migrateChannelIdEntriesInPlugins(cfg: OpenClawConfig): OpenClawConfig {
+  const entries = cfg.plugins?.entries;
+  if (!entries || !isRecord(entries)) return cfg;
+
+  const workspaceDir = resolveAgentWorkspaceDir(cfg, resolveDefaultAgentId(cfg));
+  const registry = loadPluginManifestRegistry({ config: cfg, workspaceDir });
+  const knownIds = new Set(registry.plugins.map((r) => r.id));
+
+  let changed = false;
+  const nextEntries = { ...entries };
+
+  for (const key of Object.keys(entries)) {
+    if (knownIds.has(key)) continue;
+    const pluginId = resolvePluginIdForChannel(cfg, key);
+    if (pluginId === key) continue;
+
+    const oldVal = entries[key];
+    if (!isRecord(oldVal)) continue;
+    changed = true;
+    delete nextEntries[key];
+    const existing = nextEntries[pluginId];
+    nextEntries[pluginId] = isRecord(existing)
+      ? { ...existing, ...oldVal }
+      : { ...oldVal };
+  }
+
+  if (!changed) return cfg;
+  return {
+    ...cfg,
+    plugins: {
+      ...cfg.plugins,
+      entries: nextEntries,
+    },
+  };
 }
 
 function isTelegramConfigured(cfg: OpenClawConfig, env: NodeJS.ProcessEnv): boolean {
@@ -252,8 +311,9 @@ function resolveConfiguredPlugins(
   for (const channelId of channelIds) {
     if (!channelId) continue;
     if (isChannelConfigured(cfg, channelId, env)) {
+      const pluginId = resolvePluginIdForChannel(cfg, channelId);
       changes.push({
-        pluginId: channelId,
+        pluginId,
         reason: `${channelId} configured`,
       });
     }

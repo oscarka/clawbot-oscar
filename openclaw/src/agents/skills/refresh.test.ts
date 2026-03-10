@@ -26,6 +26,12 @@ describe("ensureSkillsWatcher", () => {
     );
     expect(ignored.some((re) => re.test("/tmp/workspace/skills/dist/index.js"))).toBe(true);
     expect(ignored.some((re) => re.test("/tmp/workspace/skills/.git/config"))).toBe(true);
+    expect(ignored.some((re) => re.test("/moltbot/mission-control/.next/dev/server/app.js"))).toBe(
+      true,
+    );
+    expect(ignored.some((re) => re.test("/moltbot/xhs-toolkit/chrome-data/Default/Cache/file"))).toBe(
+      true,
+    );
     expect(ignored.some((re) => re.test("/tmp/.hidden/skills/index.md"))).toBe(false);
   });
 });

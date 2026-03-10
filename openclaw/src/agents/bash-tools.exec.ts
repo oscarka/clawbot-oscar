@@ -56,6 +56,7 @@ import { listNodes, resolveNodeIdFromList } from "./tools/nodes-utils.js";
 import { getShellConfig, sanitizeBinaryOutput } from "./shell-utils.js";
 import { buildCursorPositionResponse, stripDsrRequests } from "./pty-dsr.js";
 import { parseAgentSessionKey, resolveAgentIdFromSessionKey } from "../routing/session-key.js";
+import { ensureArtifactsDirForSession } from "./artifacts.js";
 
 const DEFAULT_MAX_OUTPUT = clampNumber(
   readEnvInt("PI_BASH_MAX_OUTPUT_CHARS"),
@@ -867,11 +868,22 @@ export function createExecTool(
       }
 
       const baseEnv = coerceEnv(process.env);
-      const mergedEnv = params.env ? { ...baseEnv, ...params.env } : baseEnv;
+      const artifactsDir = ensureArtifactsDirForSession(defaults?.sessionKey);
+      const envOverrides: Record<string, string> =
+        artifactsDir && artifactsDir.length > 0
+          ? { OPENCLAW_ARTIFACTS_DIR: artifactsDir }
+          : {};
+      const enrichedParamsEnv: Record<string, string> = params.env
+        ? { ...params.env, ...envOverrides }
+        : envOverrides;
+      const mergedEnv =
+        Object.keys(enrichedParamsEnv).length > 0
+          ? { ...baseEnv, ...enrichedParamsEnv }
+          : baseEnv;
       const env = sandbox
         ? buildSandboxEnv({
             defaultPath: DEFAULT_PATH,
-            paramsEnv: params.env,
+            paramsEnv: enrichedParamsEnv,
             sandboxEnv: sandbox.env,
             containerWorkdir: containerWorkdir ?? sandbox.containerWorkdir,
           })
@@ -926,7 +938,12 @@ export function createExecTool(
           );
         }
         const argv = buildNodeShellCommand(params.command, nodeInfo?.platform);
-        const nodeEnv = params.env ? { ...params.env } : undefined;
+        const nodeEnv =
+          Object.keys(enrichedParamsEnv).length > 0
+            ? { ...enrichedParamsEnv }
+            : params.env
+              ? { ...params.env }
+              : undefined;
         if (nodeEnv) {
           applyPathPrepend(nodeEnv, defaultPathPrepend, { requireExisting: true });
         }

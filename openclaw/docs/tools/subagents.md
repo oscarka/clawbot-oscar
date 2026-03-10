@@ -52,6 +52,11 @@ Allowlist:
 Discovery:
 - Use `agents_list` to see which agent ids are currently allowed for `sessions_spawn`.
 
+Internal comm group (optional):
+- When `agents.defaults.subagents.internalCommGroup` is set, [派活], [接活], [进度], [超时], and [回报] messages are mirrored to the specified group for visibility.
+- Config: `{ "channel": "feishu", "to": "oc_xxx", "accountId": "default" }`. Omit to disable.
+- Progress check: set `progressCheckIntervalMinutes` (e.g. `5`) to enable periodic [进度] for long-running tasks; `progressCheckThresholdMinutes` (default `5`) controls when the first progress is sent; `runTimeoutMinutes` (default `30`) controls when [超时] is sent.
+
 Auto-archive:
 - Sub-agent sessions are automatically archived after `agents.defaults.subagents.archiveAfterMinutes` (default: 60).
 - Archive uses `sessions.delete` and renames the transcript to `*.deleted.<timestamp>` (same folder).

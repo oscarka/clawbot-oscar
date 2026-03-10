@@ -1,7 +1,10 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 
 import { loadConfig } from "../config/config.js";
+import { getArtifactsDirForSession, scanArtifactsDir } from "./artifacts.js";
 import {
   loadSessionStore,
   resolveAgentIdFromSessionKey,
@@ -18,8 +21,15 @@ import {
   mergeDeliveryContext,
   normalizeDeliveryContext,
 } from "../utils/delivery-context.js";
+import {
+  resolveAgentDeliveryPlan,
+  resolveAgentOutboundTarget,
+} from "../infra/outbound/agent-delivery.js";
+import { deliverOutboundPayloads } from "../infra/outbound/deliver.js";
+import { isDeliverableMessageChannel } from "../utils/message-channel.js";
 import { isEmbeddedPiRunActive, queueEmbeddedPiMessage } from "./pi-embedded.js";
 import { type AnnounceQueueItem, enqueueAnnounce } from "./subagent-announce-queue.js";
+import { maybeSendInternalCommAnnounce } from "./subagent-internal-comm.js";
 import { readLatestAssistantReply } from "./tools/agent-step.js";
 
 function formatDurationShort(valueMs?: number) {
@@ -277,6 +287,12 @@ export function buildSubagentSystemPrompt(params: {
     "- Any relevant details the main agent should know",
     "- Keep it concise but informative",
     "",
+    "## 完成物回报（Artifacts）",
+    "If your task produces **files** (PDF, images, audio, video) or **shareable links**:",
+    "- **Files**: Write to `$OPENCLAW_ARTIFACTS_DIR` when that env var is set. Example: `--output \"\${OPENCLAW_ARTIFACTS_DIR:-.}/output.pdf\"`",
+    "- **Links**: Append to `$OPENCLAW_ARTIFACTS_DIR/links.json` as a JSON array: `[{\"label\":\"...\",\"url\":\"https://...\"}]`",
+    "- The system will automatically deliver these to the user. Do not rely on the main agent to forward them.",
+    "",
     "## What You DON'T Do",
     "- NO user conversations (that's main agent's job)",
     "- NO external messages (email, tweets, etc.) unless explicitly tasked",
@@ -385,15 +401,129 @@ export async function runSubagentAnnounceFlow(params: {
 
     // Build instructional message for main agent
     const taskLabel = params.label || params.task || "background task";
+    const childAgentId =
+      params.childSessionKey.split(":").length >= 2
+        ? params.childSessionKey.split(":")[1]
+        : "subagent";
+    // 方案 A：扫描约定目录，收集完成物（文件 + 链接）
+    const artifactsDir = getArtifactsDirForSession(params.childSessionKey);
+    const scanned =
+      artifactsDir && fs.existsSync(artifactsDir)
+        ? scanArtifactsDir(artifactsDir)
+        : { files: [] as string[], links: [] as { label?: string; url: string }[], errors: [] as string[] };
+    const artifactMediaUrls = scanned.files.map((p) =>
+      p.startsWith("file://") ? p : `file://${p}`,
+    );
+
+    maybeSendInternalCommAnnounce({
+      task: params.task,
+      agentId: childAgentId,
+      reply: reply || "",
+      statsLine: statsLine || "",
+      label: params.label,
+      outcome,
+      mediaUrls: artifactMediaUrls.length > 0 ? artifactMediaUrls : undefined,
+    });
+
+    // 将完成物直接发给用户（不依赖主 agent 写 MEDIA:）
+    const hasArtifacts = scanned.files.length > 0 || scanned.links.length > 0;
+    if (hasArtifacts) {
+      const { entry } = loadRequesterSessionEntry(params.requesterSessionKey);
+      const plan = resolveAgentDeliveryPlan({
+        sessionEntry: entry,
+        requestedChannel: requesterOrigin?.channel ?? "last",
+        explicitTo: requesterOrigin?.to,
+        explicitThreadId:
+          requesterOrigin?.threadId != null && requesterOrigin?.threadId !== ""
+            ? requesterOrigin.threadId
+            : undefined,
+        accountId: requesterOrigin?.accountId,
+        wantsDelivery: true,
+      });
+      if (
+        plan.resolvedChannel &&
+        isDeliverableMessageChannel(plan.resolvedChannel) &&
+        plan.resolvedTo
+      ) {
+        const cfg = loadConfig();
+        const resolved = resolveAgentOutboundTarget({
+          cfg,
+          plan,
+          validateExplicitTarget: false,
+        });
+        const deliveryTo = resolved.resolvedTo ?? plan.resolvedTo;
+        if (deliveryTo) {
+          try {
+            const payloads: Array<{ text?: string; mediaUrls?: string[] }> = [];
+            if (scanned.files.length > 0) {
+              payloads.push({ text: "", mediaUrls: artifactMediaUrls });
+            }
+            if (scanned.links.length > 0) {
+              const linksText = scanned.links
+                .map((l) => (l.label ? `- ${l.label}: ${l.url}` : `- ${l.url}`))
+                .join("\n");
+              payloads.push({ text: `🔗 完成物链接：\n${linksText}` });
+            }
+            await deliverOutboundPayloads({
+              cfg,
+              channel: plan.resolvedChannel,
+              to: deliveryTo,
+              accountId: plan.resolvedAccountId,
+              threadId: plan.resolvedThreadId,
+              payloads,
+              bestEffort: true,
+            });
+          } catch (err) {
+            defaultRuntime.error?.(`Artifacts delivery failed: ${String(err)}`);
+          }
+        }
+      }
+    }
+
+    // Write full findings to a temp .md file so the main agent can attach it via MEDIA:
+    let fullFindingsPath: string | undefined;
+    const replyContent = reply || "";
+    if (replyContent.length > 100) {
+      try {
+        const mdContent = [
+          `# Subagent Findings: ${taskLabel}`,
+          "",
+          `*Status: ${statusLabel}*`,
+          "",
+          "## Findings",
+          "",
+          replyContent,
+          "",
+          statsLine ? `---\n${statsLine}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+        const tmpDir = os.tmpdir();
+        const safeLabel = taskLabel.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40);
+        fullFindingsPath = path.join(
+          tmpDir,
+          `openclaw-subagent-findings-${params.childRunId.slice(0, 8)}-${safeLabel}.md`,
+        );
+        fs.writeFileSync(fullFindingsPath, mdContent, "utf-8");
+      } catch (err) {
+        defaultRuntime.error?.(`Failed to write subagent findings to temp file: ${String(err)}`);
+      }
+    }
+
+    const mediaInstruction = fullFindingsPath
+      ? `\n\nIMPORTANT: End your reply with a blank line, then this exact line (so the user gets the full .md as attachment):\nMEDIA:${fullFindingsPath}`
+      : "";
+
     const triggerMessage = [
       `A background task "${taskLabel}" just ${statusLabel}.`,
       "",
       "Findings:",
-      reply || "(no output)",
+      replyContent || "(no output)",
       "",
       statsLine,
       "",
-      "Summarize this naturally for the user. Keep it brief (1-2 sentences). Flow it into the conversation naturally.",
+      "Summarize this naturally for the user. Keep it brief (1-2 sentences). Flow it into the conversation naturally." +
+        mediaInstruction,
       "Do not mention technical details like tokens, stats, or that this was a background task.",
       "You can respond with NO_REPLY if no announcement is needed (e.g., internal task with no user-facing result).",
     ].join("\n");
