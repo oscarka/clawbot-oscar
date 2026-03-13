@@ -22,12 +22,9 @@ clawdhub install clawdhub --workdir ~/.openclaw/workspace-skill-procurement
 
 skill-procurement 技能本身已 bundled 在 openclaw 中，会自动加载。
 
-## 路由配置
+## 路由配置（方案 1：Fast 委派）
 
-通过 bindings 将技能采购相关渠道路由到该 agent，例如：
-
-- 飞书群/话题：在 `channels.feishu` 中配置 match → `skill-procurement`
-- 或使用 `@skill-procurement` 等 mention 模式
+用户与 Fast 沟通，当用户说「找技能」「安装技能」「有没有能做 X 的技能」时，Fast 通过 `sessions_spawn` 委派给 skill-procurement。无需新建群或单独 binding。
 
 ## 向后兼容
 

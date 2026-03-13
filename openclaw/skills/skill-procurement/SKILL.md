@@ -34,24 +34,29 @@ Install to the target agent's workspace (NOT global `~/.openclaw/skills`):
 
 ## Search Sources
 
-### 1. skills.sh (npx skills)
+**Search order**: Prefer ClawdHub first (faster, no interactive mode). Use skills.sh when you need broader npm ecosystem results.
+
+### 1. ClawdHub (prefer first)
 
 ```bash
-npx skills find [query]
-```
-
-- Use for: React, testing, PR review, DevOps, design, etc.
-- Install: `cd ~/.openclaw/workspace-<agentId> && npx skills add <pkg> -a openclaw -y` (no -g)
-
-### 2. ClawdHub
-
-```bash
-clawdhub search "query"
+clawdhub search "<keywords>"
 clawdhub install <slug> --workdir ~/.openclaw/workspace-<agentId>
 ```
 
+- **CRITICAL**: 调用 clawdhub 时务必带子命令 `search` 或 `install`。Never run `clawdhub <arg1> <arg2>` without subcommand—it fails with "too many arguments".
 - Use for: OpenClaw-specific skills (intel-search, nblm, etc.)
 - Install: `clawdhub install <slug> --workdir ~/.openclaw/workspace-<agentId>`
+
+### 2. skills.sh (npx skills)
+
+```bash
+npx skills find <keywords>
+```
+
+- **CRITICAL**: Always pass keywords. Never run `npx skills find` without arguments—it enters interactive mode and hangs.
+- Use for: React, testing, PR review, DevOps, design, etc.
+- Install: `cd ~/.openclaw/workspace-<agentId> && mkdir -p skills && npx skills add <pkg> -a openclaw -y` (no -g). OpenClaw loads from `skills/` only; if skill lands in `.agents/skills/`, move it to `skills/`.
+- **CRITICAL**: `npx skills add` requires full format `owner/repo@skill-name`, NOT a bare slug. ClawdHub slugs (e.g. `wechat-article-search`) cannot be used directly—use the install command from skills.sh search output.
 
 ## Workflow
 
@@ -59,17 +64,21 @@ clawdhub install <slug> --workdir ~/.openclaw/workspace-<agentId>
 
 When user asks to find/install a skill:
 - Clarify the use case
-- Decide: skills.sh or ClawdHub first (try both if unsure)
+- Extract search keywords from the request
 
 ### Step 2: Search
 
-```bash
-# skills.sh
-npx skills find <keywords>
+**Prefer ClawdHub first** (faster, cleaner output). Use skills.sh for broader npm ecosystem.
 
-# ClawdHub
+```bash
+# ClawdHub (try first)
 clawdhub search "<keywords>"
+
+# skills.sh (when you need more results)
+npx skills find <keywords>
 ```
+
+**Never** run `npx skills find` without keywords—it hangs in interactive mode.
 
 ### Step 3: Review
 
@@ -108,7 +117,16 @@ clawdhub install <slug> --workdir ~/.openclaw/workspace-<agentId>
 ls -la ~/.openclaw/workspace-<agentId>/skills/<skill-name>/SKILL.md
 ```
 
+If **not** present, skills.sh may have installed to `.agents/skills/` (Cursor/Codex path). Fix:
+```bash
+mv ~/.openclaw/workspace-<agentId>/.agents/skills/<skill-name> ~/.openclaw/workspace-<agentId>/skills/
+```
+
 If present, report success. Remind user: "New skills take effect on the next session—no gateway restart needed. Try a new chat with [agent] to use it."
+
+## Reading Skills
+
+When you need to read a skill's SKILL.md, **always pass the full file path** to the read tool: `.../skills/<skill-name>/SKILL.md`. Never pass only the directory path (e.g. `.../skills/<skill-name>`)—that causes EISDIR errors.
 
 ## When No Match Found
 
